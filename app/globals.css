@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #F5F5DC;
+  --color-sage: #8A9A86;
+  --color-terracotta: #C86B5E;
+  --color-charcoal: #36454F;
+  
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+}
+
+@layer utilities {
+  .masonry {
+    column-count: 1;
+    column-gap: 1.5rem;
+  }
+  @media (min-width: 640px) {
+    .masonry { column-count: 2; }
+  }
+  @media (min-width: 1024px) {
+    .masonry { column-count: 3; }
+  }
+  .masonry-item {
+    break-inside: avoid;
+    margin-bottom: 1.5rem;
+  }
+}
+
+body {
+  background-color: var(--color-cream);
+  color: var(--color-charcoal);
+}
