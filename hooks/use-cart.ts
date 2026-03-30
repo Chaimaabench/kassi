@@ -16,15 +16,14 @@ type DetailedCartItem = CartItem & {
 };
 
 function buildDetailedCart(items: CartItem[], products: Product[]): DetailedCartItem[] {
-  return items
-    .map((item) => {
+  return items.reduce<DetailedCartItem[]>((detailedCart, item) => {
       const product = products.find((entry) => entry.id === item.id);
 
       if (!product) {
-        return null;
+        return detailedCart;
       }
 
-      return {
+      detailedCart.push({
         ...item,
         name: product.name,
         price: product.price,
@@ -33,9 +32,10 @@ function buildDetailedCart(items: CartItem[], products: Product[]): DetailedCart
         category: product.category,
         description: product.description,
         lineTotal: product.price * item.quantity,
-      };
-    })
-    .filter((item): item is DetailedCartItem => item !== null);
+      });
+
+      return detailedCart;
+    }, []);
 }
 
 export function useCart() {
