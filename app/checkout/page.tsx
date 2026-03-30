@@ -6,15 +6,18 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
 import { clearLastOrder, readLastOrder, writeLastOrder, type SubmittedOrder } from '@/lib/orders';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shop';
 
 export default function CheckoutPage() {
   const { detailedItems, cartCount, cartTotal, isReady, clearCart } = useCart();
   const [deliveryMethod, setDeliveryMethod] = useState<'standard' | 'express'>('standard');
   const [submittedOrder, setSubmittedOrder] = useState<SubmittedOrder | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const activeSubmittedOrder = submittedOrder ?? (isReady ? readLastOrder() : null);
 
   const shippingCost = useMemo(() => {
-    if (cartTotal >= 600) {
+    if (cartTotal >= FREE_SHIPPING_THRESHOLD) {
       return 0;
     }
 
@@ -23,25 +26,78 @@ export default function CheckoutPage() {
 
   const total = cartTotal + shippingCost;
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    setSubmitError(null);
+    setIsSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
     const firstName = String(formData.get('firstName') || '').trim();
+    const lastName = String(formData.get('lastName') || '').trim();
+    const phone = String(formData.get('phone') || '').trim();
+    const email = String(formData.get('email') || '').trim();
+    const address = String(formData.get('address') || '').trim();
+    const city = String(formData.get('city') || '').trim();
+    const postalCode = String(formData.get('postalCode') || '').trim();
+    const note = String(formData.get('note') || '').trim();
+    const orderId = `KASSI-${Date.now().toString().slice(-6)}`;
     const nextSubmittedOrder = {
       customerName: firstName || 'Customer',
       itemsCount: cartCount,
       total,
-      orderId: `KASSI-${Date.now().toString().slice(-6)}`,
+      orderId,
       submittedAt: new Date().toLocaleString('fr-MA', {
         dateStyle: 'medium',
         timeStyle: 'short',
       }),
     };
 
-    setSubmittedOrder(nextSubmittedOrder);
-    writeLastOrder(nextSubmittedOrder);
-    clearCart();
+    try {
+      const response = await fetch('/api/checkout-leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          orderId,
+          customerName: `${firstName} ${lastName}`.trim() || firstName || 'Customer',
+          firstName,
+          lastName,
+          phone,
+          email,
+          address,
+          city,
+          postalCode,
+          note,
+          deliveryMethod,
+          shippingCost,
+          subtotal: cartTotal,
+          total,
+          itemsCount: cartCount,
+          items: detailedItems.map((item) => ({
+            id: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            lineTotal: item.lineTotal,
+          })),
+        }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(data?.error || 'Unable to save the checkout lead.');
+      }
+
+      setSubmittedOrder(nextSubmittedOrder);
+      writeLastOrder(nextSubmittedOrder);
+      clearCart();
+    } catch (error) {
+      setSubmitError(error instanceof Error ? error.message : 'Unable to save the checkout lead.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!isReady) {
@@ -273,6 +329,9 @@ export default function CheckoutPage() {
 
               <div className="rounded-[2rem] bg-white border border-charcoal/10 shadow-sm p-6 md:p-8">
                 <h2 className="font-serif text-3xl text-charcoal">Shipping and payment</h2>
+                <div className="mt-6 rounded-2xl bg-sage/10 px-5 py-4 text-sm text-charcoal/75">
+                  Free shipping is unlocked automatically from {FREE_SHIPPING_THRESHOLD} MAD.
+                </div>
                 <div className="mt-6 grid gap-4">
                   <label className="flex items-start gap-4 rounded-2xl border border-charcoal/10 bg-cream p-4 cursor-pointer">
                     <input
@@ -310,11 +369,18 @@ export default function CheckoutPage() {
                   </p>
                 </div>
 
+                {submitError && (
+                  <div className="mt-6 rounded-2xl border border-terracotta/20 bg-terracotta/5 p-4 text-sm text-terracotta">
+                    {submitError}
+                  </div>
+                )}
+
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="mt-8 w-full sm:w-auto px-8 py-4 rounded-full bg-terracotta text-white font-medium hover:bg-terracotta/90 transition-colors"
                 >
-                  Confirm order
+                  {isSubmitting ? 'Saving order...' : 'Confirm order'}
                 </button>
               </div>
             </form>
@@ -348,7 +414,14 @@ export default function CheckoutPage() {
                           <h3 className="font-medium text-charcoal">{item.name}</h3>
                           <p className="text-sm text-charcoal/50 mt-1">{item.category}</p>
                         </div>
-                        <p className="font-medium text-charcoal whitespace-nowrap">{item.lineTotal} MAD</p>
+                        <div className="text-right whitespace-nowrap">
+                          <p className="font-medium text-charcoal">{item.lineTotal} MAD</p>
+                          {item.originalPrice && item.originalPrice > item.price && (
+                            <p className="text-xs text-charcoal/45 line-through">
+                              {item.originalPrice * item.quantity} MAD
+                            </p>
+                          )}
+                        </div>
                       </div>
                       <p className="text-sm text-charcoal/60 mt-3 leading-6">{item.description}</p>
                       <p className="text-sm text-charcoal/45 mt-2">Quantity: {item.quantity}</p>
@@ -357,7 +430,7 @@ export default function CheckoutPage() {
                 ))}
               </div>
 
-              <div className="mt-8 pt-6 border-t border-charcoal/10 space-y-3">
+                <div className="mt-8 pt-6 border-t border-charcoal/10 space-y-3">
                 <div className="flex items-center justify-between text-charcoal/70">
                   <span>Subtotal</span>
                   <span>{cartTotal} MAD</span>
@@ -371,7 +444,7 @@ export default function CheckoutPage() {
                   <span>{total} MAD</span>
                 </div>
                 {shippingCost === 0 && (
-                  <p className="text-sm text-sage pt-2">Free delivery unlocked on orders over 600 MAD.</p>
+                  <p className="text-sm text-sage pt-2">Free delivery unlocked on orders from {FREE_SHIPPING_THRESHOLD} MAD.</p>
                 )}
               </div>
             </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowRight,
@@ -20,6 +21,7 @@ import { SiteLogo } from '@/components/site-logo';
 import { useCart } from '@/hooks/use-cart';
 import { useProductCatalog } from '@/hooks/use-product-catalog';
 import type { ProductCategory } from '@/lib/products';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/shop';
 
 const NAV_ITEMS: Array<{ label: string; filter: 'all' | ProductCategory }> = [
   { label: 'New Arrivals', filter: 'all' },
@@ -35,7 +37,24 @@ const FILTERS: Array<{ label: string; value: 'all' | ProductCategory }> = [
   { label: 'Nature Pop', value: 'organic' },
 ];
 
+function getDiscountPercent(price: number, originalPrice?: number) {
+  if (!originalPrice || originalPrice <= price) {
+    return null;
+  }
+
+  return Math.round(((originalPrice - price) / originalPrice) * 100);
+}
+
+function getStartingPrice(prices: number[]) {
+  if (prices.length === 0) {
+    return null;
+  }
+
+  return Math.min(...prices);
+}
+
 export default function KassiLandingPage() {
+  const router = useRouter();
   const products = useProductCatalog();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -69,12 +88,13 @@ export default function KassiLandingPage() {
   const softHighlight = products.find((product) => product.categoryId === 'soft') ?? products[0];
   const boldHighlight =
     products.find((product) => product.categoryId === 'bold') ?? products.find((product) => product.id !== softHighlight?.id);
+  const startingPrice = getStartingPrice(products.map((product) => product.price));
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? 'bg-cream/90 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-6'
+          isScrolled ? 'bg-cream/92 backdrop-blur-md py-4 shadow-sm' : 'bg-transparent py-5 md:py-6'
         }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
@@ -86,12 +106,12 @@ export default function KassiLandingPage() {
             <SiteLogo className="inline-flex items-center justify-center md:justify-start" imageClassName="h-12 w-auto" priority />
           </div>
 
-          <nav className="hidden md:flex items-center space-x-8">
+          <nav className="hidden md:flex items-center space-x-6 lg:space-x-8">
             {NAV_ITEMS.map((item) => (
               <button
                 key={item.label}
                 onClick={() => scrollToCollection(item.filter)}
-                className="text-sm font-medium text-charcoal/80 hover:text-terracotta transition-colors"
+                className="text-sm font-medium tracking-[0.02em] text-charcoal/80 hover:text-terracotta transition-colors"
               >
                 {item.label}
               </button>
@@ -236,7 +256,14 @@ export default function KassiLandingPage() {
                                 <Plus className="w-4 h-4" />
                               </button>
                             </div>
-                            <p className="font-medium text-charcoal">{item.lineTotal} MAD</p>
+                            <div className="text-right">
+                              <p className="font-medium text-charcoal">{item.lineTotal} MAD</p>
+                              {item.originalPrice && item.originalPrice > item.price && (
+                                <p className="text-xs text-charcoal/45 line-through">
+                                  {item.originalPrice * item.quantity} MAD
+                                </p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -252,7 +279,7 @@ export default function KassiLandingPage() {
                     <span className="font-serif text-xl">{cartTotal} MAD</span>
                   </div>
                   <p className="text-xs text-charcoal/60 mb-6">
-                    Shipping and taxes are calculated at checkout. Cash on delivery available.
+                    Shipping and taxes are calculated at checkout. Free shipping from {FREE_SHIPPING_THRESHOLD} MAD.
                   </p>
                   <Link
                     href="/checkout"
@@ -268,9 +295,9 @@ export default function KassiLandingPage() {
         )}
       </AnimatePresence>
 
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-32 px-6 overflow-hidden">
+      <section className="relative pt-28 pb-16 md:pt-36 md:pb-24 px-4 sm:px-6 overflow-hidden">
         <div className="max-w-7xl mx-auto">
-          <div className="relative rounded-3xl overflow-hidden aspect-[4/5] md:aspect-[851/315] bg-charcoal/5">
+          <div className="relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden aspect-[4/5] md:aspect-[851/315] bg-charcoal/5 shadow-[0_24px_60px_rgba(54,69,79,0.12)]">
             <Image
               src="/banner/hero-banner.png"
               alt="Kassi ceramic mug collection banner"
@@ -280,30 +307,36 @@ export default function KassiLandingPage() {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-charcoal/70 via-charcoal/20 to-transparent md:bg-gradient-to-r md:from-charcoal/80 md:via-charcoal/40 md:to-transparent" />
 
-            <div className="absolute inset-0 p-8 md:p-16 flex flex-col justify-end md:justify-center items-start">
+            <div className="absolute inset-0 p-6 sm:p-8 md:p-14 lg:p-16 flex flex-col justify-end md:justify-center items-start">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.2 }}
-                className="max-w-xl"
+                className="max-w-xl lg:max-w-2xl pt-8 md:pt-0"
               >
-                <span className="inline-block px-3 py-1 bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-medium tracking-wider uppercase rounded-full mb-6">
+                <span className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.22em] text-white backdrop-blur-md mb-4">
                   New Kassi Drop
                 </span>
-                <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl text-white leading-[1.1] mb-6">
-                  KASSI:
+                <h1 className="font-serif text-[3rem] sm:text-[4.25rem] md:text-[4.75rem] lg:text-[5.1rem] text-white leading-[0.92] tracking-[-0.045em] mb-4 max-w-4xl text-balance">
+                  Tiny treasures made to be loved
                   <br />
-                  Cute ceramic mugs at 150 DHS.
+                  (and gifted).
                 </h1>
-                <p className="text-white/80 text-lg md:text-xl mb-8 font-light max-w-md">
-                  Discover the latest Kassi collection with playful, giftable mugs designed to brighten every coffee break.
+                <p className="text-white/85 text-lg md:text-[1.6rem] mb-6 font-light max-w-xl leading-[1.45]">
+                  Elevate your everyday
+                  {startingPrice ? ` starting at ${startingPrice} MAD only.` : '.'}
                 </p>
-                <button
-                  onClick={() => scrollToCollection('all')}
-                  className="bg-terracotta text-white px-8 py-4 rounded-full font-medium hover:bg-white hover:text-terracotta transition-colors duration-300 flex items-center gap-2"
-                >
-                  Shop The Collection <ArrowRight className="w-4 h-4" />
-                </button>
+                <div className="flex flex-col sm:flex-row sm:flex-wrap items-start gap-3 sm:gap-4">
+                  <button
+                    onClick={() => scrollToCollection('all')}
+                    className="bg-terracotta text-white px-8 py-4 rounded-full font-medium hover:bg-white hover:text-terracotta transition-colors duration-300 flex items-center gap-2 shadow-[0_16px_30px_rgba(200,107,94,0.28)]"
+                  >
+                    Shop The Collection <ArrowRight className="w-4 h-4" />
+                  </button>
+                  <div className="inline-flex max-w-full rounded-full border border-white/16 bg-white/12 px-4 py-3 text-sm text-white/90 backdrop-blur-sm">
+                    Free shipping from {FREE_SHIPPING_THRESHOLD} MAD.
+                  </div>
+                </div>
               </motion.div>
             </div>
           </div>
@@ -333,7 +366,7 @@ export default function KassiLandingPage() {
             <div>
               <h2 className="font-serif text-4xl md:text-5xl text-charcoal mb-4">Curated Collection</h2>
               <p className="text-charcoal/60 text-lg max-w-xl">
-                Explore the current Kassi selection and shop every mug at one simple price: 150 DHS.
+                Explore the current Kassi selection, compare promo prices, and swipe through every mug gallery.
               </p>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0 hide-scrollbar">
@@ -362,6 +395,7 @@ export default function KassiLandingPage() {
                 viewport={{ once: true, margin: '-100px' }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
                 className="masonry-item group cursor-pointer"
+                onClick={() => router.push(`/products/${mug.slug}`)}
               >
                 <div className="relative rounded-2xl overflow-hidden bg-charcoal/5 mb-4">
                   <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar">
@@ -388,8 +422,15 @@ export default function KassiLandingPage() {
                       </span>
                     </div>
                   )}
+                  {getDiscountPercent(mug.price, mug.originalPrice) && (
+                    <div className="absolute top-4 right-4">
+                      <span className="rounded-full bg-charcoal px-3 py-1 text-xs font-medium uppercase tracking-wider text-white">
+                        -{getDiscountPercent(mug.price, mug.originalPrice)}%
+                      </span>
+                    </div>
+                  )}
                   {mug.images.length > 1 && (
-                    <div className="absolute left-1/2 top-4 -translate-x-1/2 flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 backdrop-blur-sm">
+                    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 backdrop-blur-sm">
                       {mug.images.map((image, imageIndex) => (
                         <span
                           key={`${image}-${imageIndex}`}
@@ -415,14 +456,30 @@ export default function KassiLandingPage() {
                 <div>
                   <div className="flex justify-between items-start gap-6">
                     <div>
-                      <h3 className="font-serif text-xl text-charcoal group-hover:text-terracotta transition-colors">
+                      <Link
+                        href={`/products/${mug.slug}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="font-serif text-xl text-charcoal group-hover:text-terracotta transition-colors"
+                      >
                         {mug.name}
-                      </h3>
+                      </Link>
                       <p className="text-sm text-charcoal/50 mt-1">{mug.category}</p>
                     </div>
-                    <span className="font-medium text-charcoal whitespace-nowrap">{mug.price} MAD</span>
+                    <div className="text-right whitespace-nowrap">
+                      <p className="font-medium text-charcoal">{mug.price} MAD</p>
+                      {mug.originalPrice && mug.originalPrice > mug.price && (
+                        <p className="text-sm text-charcoal/45 line-through">{mug.originalPrice} MAD</p>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-charcoal/60 mt-3">{mug.description}</p>
+                  <Link
+                    href={`/products/${mug.slug}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-terracotta hover:gap-3 transition-all"
+                  >
+                    View details <ArrowRight className="h-4 w-4" />
+                  </Link>
                 </div>
               </motion.div>
             ))}

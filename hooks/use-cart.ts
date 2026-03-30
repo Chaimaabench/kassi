@@ -8,6 +8,7 @@ import type { Product } from '@/lib/products';
 type DetailedCartItem = CartItem & {
   name: string;
   price: number;
+  originalPrice?: number;
   image: string;
   category: string;
   description: string;
@@ -27,6 +28,7 @@ function buildDetailedCart(items: CartItem[], products: Product[]): DetailedCart
         ...item,
         name: product.name,
         price: product.price,
+        originalPrice: product.originalPrice,
         image: product.image,
         category: product.category,
         description: product.description,
