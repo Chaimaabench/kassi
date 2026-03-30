@@ -5,17 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
 import { useCart } from '@/hooks/use-cart';
-
-type SubmittedOrder = {
-  customerName: string;
-  itemsCount: number;
-  total: number;
-};
+import { clearLastOrder, readLastOrder, writeLastOrder, type SubmittedOrder } from '@/lib/orders';
 
 export default function CheckoutPage() {
   const { detailedItems, cartCount, cartTotal, isReady, clearCart } = useCart();
   const [deliveryMethod, setDeliveryMethod] = useState<'standard' | 'express'>('standard');
   const [submittedOrder, setSubmittedOrder] = useState<SubmittedOrder | null>(null);
+  const activeSubmittedOrder = submittedOrder ?? (isReady ? readLastOrder() : null);
 
   const shippingCost = useMemo(() => {
     if (cartTotal >= 600) {
@@ -32,12 +28,19 @@ export default function CheckoutPage() {
 
     const formData = new FormData(event.currentTarget);
     const firstName = String(formData.get('firstName') || '').trim();
-
-    setSubmittedOrder({
+    const nextSubmittedOrder = {
       customerName: firstName || 'Customer',
       itemsCount: cartCount,
       total,
-    });
+      orderId: `KASSI-${Date.now().toString().slice(-6)}`,
+      submittedAt: new Date().toLocaleString('fr-MA', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    };
+
+    setSubmittedOrder(nextSubmittedOrder);
+    writeLastOrder(nextSubmittedOrder);
     clearCart();
   };
 
@@ -51,7 +54,7 @@ export default function CheckoutPage() {
     );
   }
 
-  if (submittedOrder) {
+  if (activeSubmittedOrder) {
     return (
       <main className="min-h-screen bg-cream px-6 py-16 md:py-24">
         <div className="max-w-3xl mx-auto">
@@ -66,32 +69,44 @@ export default function CheckoutPage() {
             </div>
             <h1 className="font-serif text-4xl text-charcoal mb-4">Order received</h1>
             <p className="text-charcoal/70 text-lg max-w-xl mx-auto">
-              Thank you {submittedOrder.customerName}, your checkout flow is now in place and your order summary
+              Thank you {activeSubmittedOrder.customerName}, your checkout flow is now in place and your order summary
               has been captured on the front-end.
             </p>
             <div className="mt-8 grid sm:grid-cols-3 gap-4 text-left">
               <div className="rounded-2xl bg-cream p-5">
+                <p className="text-sm text-charcoal/50 mb-2">Order ID</p>
+                <p className="text-xl font-serif text-charcoal">{activeSubmittedOrder.orderId}</p>
+              </div>
+              <div className="rounded-2xl bg-cream p-5">
                 <p className="text-sm text-charcoal/50 mb-2">Items</p>
-                <p className="text-2xl font-serif text-charcoal">{submittedOrder.itemsCount}</p>
+                <p className="text-2xl font-serif text-charcoal">{activeSubmittedOrder.itemsCount}</p>
               </div>
               <div className="rounded-2xl bg-cream p-5">
                 <p className="text-sm text-charcoal/50 mb-2">Total</p>
-                <p className="text-2xl font-serif text-charcoal">{submittedOrder.total} MAD</p>
+                <p className="text-2xl font-serif text-charcoal">{activeSubmittedOrder.total} MAD</p>
               </div>
               <div className="rounded-2xl bg-cream p-5">
-                <p className="text-sm text-charcoal/50 mb-2">Payment</p>
-                <p className="text-2xl font-serif text-charcoal">COD</p>
+                <p className="text-sm text-charcoal/50 mb-2">Placed at</p>
+                <p className="text-xl font-serif text-charcoal">{activeSubmittedOrder.submittedAt}</p>
               </div>
             </div>
             <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               <Link
                 href="/"
+                onClick={() => {
+                  clearLastOrder();
+                  setSubmittedOrder(null);
+                }}
                 className="px-6 py-3 rounded-full bg-charcoal text-white font-medium hover:bg-charcoal/90 transition-colors"
               >
                 Continue shopping
               </Link>
               <Link
                 href="/"
+                onClick={() => {
+                  clearLastOrder();
+                  setSubmittedOrder(null);
+                }}
                 className="px-6 py-3 rounded-full border border-charcoal/15 text-charcoal font-medium hover:border-terracotta hover:text-terracotta transition-colors"
               >
                 Update products and prices
@@ -116,6 +131,10 @@ export default function CheckoutPage() {
           </p>
           <Link
             href="/"
+            onClick={() => {
+              clearLastOrder();
+              setSubmittedOrder(null);
+            }}
             className="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-full bg-terracotta text-white font-medium hover:bg-terracotta/90 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />

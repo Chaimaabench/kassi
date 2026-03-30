@@ -16,8 +16,10 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { SiteLogo } from '@/components/site-logo';
 import { useCart } from '@/hooks/use-cart';
-import { products, type ProductCategory } from '@/lib/products';
+import { useProductCatalog } from '@/hooks/use-product-catalog';
+import type { ProductCategory } from '@/lib/products';
 
 const NAV_ITEMS: Array<{ label: string; filter: 'all' | ProductCategory }> = [
   { label: 'New Arrivals', filter: 'all' },
@@ -34,6 +36,7 @@ const FILTERS: Array<{ label: string; value: 'all' | ProductCategory }> = [
 ];
 
 export default function KassiLandingPage() {
+  const products = useProductCatalog();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -63,6 +66,9 @@ export default function KassiLandingPage() {
     selectedFilter === 'all'
       ? products
       : products.filter((product) => product.categoryId === selectedFilter);
+  const softHighlight = products.find((product) => product.categoryId === 'soft') ?? products[0];
+  const boldHighlight =
+    products.find((product) => product.categoryId === 'bold') ?? products.find((product) => product.id !== softHighlight?.id);
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
@@ -77,9 +83,7 @@ export default function KassiLandingPage() {
           </button>
 
           <div className="flex-1 md:flex-none text-center md:text-left">
-            <Link href="/" className="font-serif text-3xl tracking-tight font-medium text-charcoal">
-              Kassi
-            </Link>
+            <SiteLogo className="inline-flex items-center justify-center md:justify-start" imageClassName="h-12 w-auto" priority />
           </div>
 
           <nav className="hidden md:flex items-center space-x-8">
@@ -123,7 +127,7 @@ export default function KassiLandingPage() {
             className="fixed inset-0 z-[60] bg-cream flex flex-col p-6 md:hidden"
           >
             <div className="flex justify-between items-center mb-12">
-              <span className="font-serif text-2xl text-charcoal">Kassi</span>
+              <SiteLogo imageClassName="h-10 w-auto" />
               <button onClick={() => setIsMobileMenuOpen(false)} className="text-charcoal">
                 <X className="w-6 h-6" />
               </button>
@@ -360,14 +364,19 @@ export default function KassiLandingPage() {
                 className="masonry-item group cursor-pointer"
               >
                 <div className="relative rounded-2xl overflow-hidden bg-charcoal/5 mb-4">
-                  <Image
-                    src={mug.image}
-                    alt={mug.name}
-                    width={800}
-                    height={1200}
-                    className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
-                    referrerPolicy="no-referrer"
-                  />
+                  <div className="flex overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar">
+                    {mug.images.map((image, imageIndex) => (
+                      <div key={`${mug.id}-${imageIndex}`} className="relative aspect-[4/5] w-full shrink-0 snap-start">
+                        <Image
+                          src={image}
+                          alt={`${mug.name} view ${imageIndex + 1}`}
+                          fill
+                          className="object-cover transition-transform duration-700 group-hover:scale-105"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    ))}
+                  </div>
                   {mug.tag && (
                     <div className="absolute top-4 left-4">
                       <span
@@ -377,6 +386,16 @@ export default function KassiLandingPage() {
                       >
                         {mug.tag}
                       </span>
+                    </div>
+                  )}
+                  {mug.images.length > 1 && (
+                    <div className="absolute left-1/2 top-4 -translate-x-1/2 flex items-center gap-2 rounded-full bg-white/80 px-3 py-1 backdrop-blur-sm">
+                      {mug.images.map((image, imageIndex) => (
+                        <span
+                          key={`${image}-${imageIndex}`}
+                          className={`h-1.5 rounded-full ${imageIndex === 0 ? 'w-5 bg-charcoal' : 'w-1.5 bg-charcoal/35'}`}
+                        />
+                      ))}
                     </div>
                   )}
 
@@ -418,14 +437,16 @@ export default function KassiLandingPage() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             onClick={() => scrollToCollection('soft')}
-            className="relative rounded-3xl overflow-hidden aspect-square md:aspect-[4/3] group cursor-pointer text-left"
+            className="relative rounded-3xl overflow-hidden aspect-square md:aspect-[4/3] group cursor-pointer text-left bg-charcoal/5"
           >
-            <Image
-              src="/products/flower-cup.png"
-              alt="Flower Bloom Cup from the Kassi collection"
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+            {softHighlight && (
+              <Image
+                src={softHighlight.image}
+                alt={`${softHighlight.name} from the Kassi collection`}
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            )}
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/40 transition-colors duration-500" />
             <div className="absolute inset-0 p-10 flex flex-col justify-end">
               <h3 className="font-serif text-3xl md:text-4xl text-white mb-3">Soft Romance</h3>
@@ -443,14 +464,16 @@ export default function KassiLandingPage() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
             onClick={() => scrollToCollection('bold')}
-            className="relative rounded-3xl overflow-hidden aspect-square md:aspect-[4/3] group cursor-pointer text-left"
+            className="relative rounded-3xl overflow-hidden aspect-square md:aspect-[4/3] group cursor-pointer text-left bg-charcoal/5"
           >
-            <Image
-              src="/products/heart-mug.png"
-              alt="Pearl Heart Mug from the Kassi collection"
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
-            />
+            {boldHighlight && (
+              <Image
+                src={boldHighlight.image}
+                alt={`${boldHighlight.name} from the Kassi collection`}
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            )}
             <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors duration-500" />
             <div className="absolute inset-0 p-10 flex flex-col justify-end">
               <h3 className="font-serif text-3xl md:text-4xl text-white mb-3">Playful Icons</h3>
@@ -499,7 +522,7 @@ export default function KassiLandingPage() {
             </a>
           </div>
 
-          <div className="font-serif text-3xl tracking-tight text-cream">Kassi</div>
+          <SiteLogo className="inline-flex items-center rounded-full bg-cream px-4 py-2" imageClassName="h-10 w-auto" textClassName="font-serif text-3xl tracking-tight text-charcoal" />
         </div>
         <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-cream/10 text-center text-sm text-cream/50">
           &copy; {new Date().getFullYear()} Kassi. All rights reserved.

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { CART_UPDATED_EVENT, readCart, type CartItem, writeCart } from '@/lib/cart';
-import { getProductById } from '@/lib/products';
+import { useProductCatalog } from '@/hooks/use-product-catalog';
+import type { Product } from '@/lib/products';
 
 type DetailedCartItem = CartItem & {
   name: string;
@@ -13,10 +14,10 @@ type DetailedCartItem = CartItem & {
   lineTotal: number;
 };
 
-function buildDetailedCart(items: CartItem[]): DetailedCartItem[] {
+function buildDetailedCart(items: CartItem[], products: Product[]): DetailedCartItem[] {
   return items
     .map((item) => {
-      const product = getProductById(item.id);
+      const product = products.find((entry) => entry.id === item.id);
 
       if (!product) {
         return null;
@@ -36,6 +37,7 @@ function buildDetailedCart(items: CartItem[]): DetailedCartItem[] {
 }
 
 export function useCart() {
+  const products = useProductCatalog();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isReady, setIsReady] = useState(false);
 
@@ -90,7 +92,7 @@ export function useCart() {
     setAndPersistCart([]);
   };
 
-  const detailedItems = buildDetailedCart(cartItems);
+  const detailedItems = buildDetailedCart(cartItems, products);
   const cartCount = detailedItems.reduce((total, item) => total + item.quantity, 0);
   const cartTotal = detailedItems.reduce((total, item) => total + item.lineTotal, 0);
 
