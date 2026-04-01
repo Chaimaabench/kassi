@@ -12,7 +12,7 @@ type CheckoutLeadPayload = {
   city: string;
   postalCode: string;
   note: string;
-  deliveryMethod: 'standard' | 'express';
+  deliveryMethod: 'casablanca' | 'outside_casablanca';
   shippingCost: number;
   subtotal: number;
   total: number;
@@ -44,7 +44,8 @@ export async function POST(request: Request) {
     const city = asText(payload.city);
     const postalCode = asText(payload.postalCode);
     const note = asText(payload.note);
-    const deliveryMethod = payload.deliveryMethod === 'express' ? 'express' : 'standard';
+    const deliveryMethod =
+      payload.deliveryMethod === 'outside_casablanca' ? 'outside_casablanca' : 'casablanca';
     const shippingCost = Number(payload.shippingCost ?? 0);
     const subtotal = Number(payload.subtotal ?? 0);
     const total = Number(payload.total ?? 0);

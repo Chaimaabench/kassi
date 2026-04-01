@@ -7,11 +7,13 @@ import type { Product } from '@/lib/products';
 
 type DetailedCartItem = CartItem & {
   name: string;
+  nameFr?: string;
   price: number;
   originalPrice?: number;
   image: string;
-  category: string;
+  categoryId: Product['categoryId'];
   description: string;
+  descriptionFr?: string;
   lineTotal: number;
 };
 
@@ -26,11 +28,13 @@ function buildDetailedCart(items: CartItem[], products: Product[]): DetailedCart
       detailedCart.push({
         ...item,
         name: product.name,
+        nameFr: product.nameFr,
         price: product.price,
         originalPrice: product.originalPrice,
         image: product.image,
-        category: product.category,
+        categoryId: product.categoryId,
         description: product.description,
+        descriptionFr: product.descriptionFr,
         lineTotal: product.price * item.quantity,
       });
 
